@@ -126,51 +126,55 @@ dialogs.add('reserveTable', [
             // Or save entities to dialog state:
             // dc.activeDialog.state
             // Resolve entities returned from LUIS, and save these to state
-            if (typedresult.entities) {
+            yield SaveEntities(dc, typedresult);
+            /* if (typedresult.entities)
+            {
                 console.log(`typedresult.entities exists.`);
-                let datetime = typedresult.entities.datetime;
-                //console.log(datetime.toString());
-                if (datetime) {
-                    console.log(`datetime entity defined of type ${datetime[0].type}.`);
-                    datetime[0].timex.forEach((value, index) => {
-                        console.log(`Timex[${index}]=${value}`);
-                    });
-                    // Use the first date or time found in the utterance
-                    var dtvalue;
-                    if (datetime[0].timex) {
-                        dtvalue = datetime[0].timex[0];
-                        // More information on timex can be found here: http://www.timeml.org/publications/timeMLdocs/timeml_1.2.1.html#timex3                                
-                        // More information on the library which does the recognition can be found here: https://github.com/Microsoft/Recognizers-Text                        
-                    }
-                    if (datetime[0].type === "datetime") {
-                        dc.activeDialog.state.dateTime = dtvalue;
-                        if (debug) {
-                            var datefound = new Date(dtvalue);
-                            console.log(`Type: ${datetime[0].type}, Date: ${datefound.toDateString()}, Time: ${datefound.toTimeString()}, DateTime: ${datefound.toLocaleString()}`);
-                            console.log(`(locale-specific) Date: ${datefound.toLocaleDateString()}, Time: ${datefound.toLocaleTimeString()}`);
-                            dc.activeDialog.state.date = datefound.toLocaleDateString();
-                            dc.activeDialog.state.time = datefound.toLocaleTimeString();
-                            dc.activeDialog.state.dateTime = datefound.toLocaleString();
+                    let datetime = typedresult.entities.datetime;
+                    //console.log(datetime.toString());
+                    if (datetime) {
+                        console.log(`datetime entity defined of type ${datetime[0].type}.`);
+                        datetime[0].timex.forEach( (value, index) => {
+                            console.log(`Timex[${index}]=${value}`);
+                        })
+                        // Use the first date or time found in the utterance
+                        var dtvalue;
+                        if (datetime[0].timex) {
+                            dtvalue = datetime[0].timex[0];
+                            // More information on timex can be found here: http://www.timeml.org/publications/timeMLdocs/timeml_1.2.1.html#timex3
+                            // More information on the library which does the recognition can be found here: https://github.com/Microsoft/Recognizers-Text
+                        }
+    
+                        if (datetime[0].type === "datetime" ) {
+                            dc.activeDialog.state.dateTime = dtvalue;
+                            if (debug) {
+                                var datefound = new Date(dtvalue);
+                                console.log(`Type: ${datetime[0].type}, Date: ${datefound.toDateString()}, Time: ${datefound.toTimeString()}, DateTime: ${datefound.toLocaleString()}`);
+                                console.log(`(locale-specific) Date: ${datefound.toLocaleDateString()}, Time: ${datefound.toLocaleTimeString()}`);
+                                dc.activeDialog.state.date = datefound.toLocaleDateString();
+                                dc.activeDialog.state.time = datefound.toLocaleTimeString();
+                                dc.activeDialog.state.dateTime = datefound.toLocaleString();
+                            }
+                        }
+                        else  {
+                            // TODO: also handle existence of state.date and state.time
+                            console.log(`Type ${datetime[0].type} is not yet supported`);
                         }
                     }
-                    else {
-                        // TODO: also handle existence of state.date and state.time
-                        console.log(`Type ${datetime[0].type} is not yet supported`);
-                    }
-                }
-                let partysize = typedresult.entities.partySize;
-                if (partysize) {
-                    console.log(`partysize entity defined.${partysize}`);
-                    // use first partySize entity that was found in utterance
-                    dc.activeDialog.state.partySize = partysize[0];
-                }
-                let cafelocation = typedresult.entities.cafeLocation;
-                if (cafelocation) {
-                    console.log(`location entity defined.${cafelocation}`);
-                    // use first cafeLocation entity that was found in utterance
-                    dc.activeDialog.state.cafeLocation = cafelocation[0][0];
-                }
-            } // end if (typedresult.entities)
+                    let partysize = typedresult.entities.partySize;
+                        if (partysize) {
+                            console.log(`partysize entity defined.${partysize}`);
+                            // use first partySize entity that was found in utterance
+                            dc.activeDialog.state.partySize = partysize[0];
+                        }
+                        let cafelocation = typedresult.entities.cafeLocation;
+    
+                        if (cafelocation) {
+                            console.log(`location entity defined.${cafelocation}`);
+                            // use first cafeLocation entity that was found in utterance
+                            dc.activeDialog.state.cafeLocation = cafelocation[0][0];
+                        }
+            }*/ // end if (typedresult.entities)
             yield dc.context.sendActivity("Welcome to the reservation service.");
             if (dc.activeDialog.state.dateTime) {
                 yield next();
@@ -235,4 +239,56 @@ dialogs.add('reserveTable', [
         });
     }
 ]);
+// Helper function that saves any entities found in the LUIS result
+// to the dialog state
+function SaveEntities(dc, typedresult) {
+    return __awaiter(this, void 0, void 0, function* () {
+        // Resolve entities returned from LUIS, and save these to state
+        if (typedresult.entities) {
+            console.log(`typedresult.entities exists.`);
+            let datetime = typedresult.entities.datetime;
+            //console.log(datetime.toString());
+            if (datetime) {
+                console.log(`datetime entity defined of type ${datetime[0].type}.`);
+                datetime[0].timex.forEach((value, index) => {
+                    console.log(`Timex[${index}]=${value}`);
+                });
+                // Use the first date or time found in the utterance
+                var dtvalue;
+                if (datetime[0].timex) {
+                    dtvalue = datetime[0].timex[0];
+                    // More information on timex can be found here: http://www.timeml.org/publications/timeMLdocs/timeml_1.2.1.html#timex3                                
+                    // More information on the library which does the recognition can be found here: https://github.com/Microsoft/Recognizers-Text                        
+                }
+                if (datetime[0].type === "datetime") {
+                    dc.activeDialog.state.dateTime = dtvalue;
+                    if (debug) {
+                        var datefound = new Date(dtvalue);
+                        console.log(`Type: ${datetime[0].type}, Date: ${datefound.toDateString()}, Time: ${datefound.toTimeString()}, DateTime: ${datefound.toLocaleString()}`);
+                        console.log(`(locale-specific) Date: ${datefound.toLocaleDateString()}, Time: ${datefound.toLocaleTimeString()}`);
+                        dc.activeDialog.state.date = datefound.toLocaleDateString();
+                        dc.activeDialog.state.time = datefound.toLocaleTimeString();
+                        dc.activeDialog.state.dateTime = datefound.toLocaleString();
+                    }
+                }
+                else {
+                    // TODO: also handle existence of state.date and state.time
+                    console.log(`Type ${datetime[0].type} is not yet supported`);
+                }
+            }
+            let partysize = typedresult.entities.partySize;
+            if (partysize) {
+                console.log(`partysize entity defined.${partysize}`);
+                // use first partySize entity that was found in utterance
+                dc.activeDialog.state.partySize = partysize[0];
+            }
+            let cafelocation = typedresult.entities.cafeLocation;
+            if (cafelocation) {
+                console.log(`location entity defined.${cafelocation}`);
+                // use first cafeLocation entity that was found in utterance
+                dc.activeDialog.state.cafeLocation = cafelocation[0][0];
+            }
+        } // end if (typedresult.entities)
+    });
+}
 //# sourceMappingURL=luisbot.js.map

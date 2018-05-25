@@ -43,16 +43,8 @@ const adapter = new BotFrameworkAdapter( {
 });
 
 // Add conversation state middleware
-interface EchoState {
-    dialogStack: any[];
-    count: number;
-    reservationInfo: any;
-}
-
 interface CafeBotConvState {
     dialogStack: any[];
-    //reservationInfo:  bookTableEntities; 
-    count: number;
     cafeLocation: string;
     dateTime: string;
     date: string;
@@ -75,10 +67,7 @@ server.post('/api/messages', (req, res) => {
         // Create dialog context 
         const state = conversationState.get(context);
         const dc = dialogs.createContext(context, state);
-
-
             
-
         if (!isMessage) {
             await context.sendActivity(`[${context.activity.type} event detected]`);
         }
@@ -112,7 +101,6 @@ server.post('/api/messages', (req, res) => {
                             break;
                         }
                         default: {
-                            //await context.sendActivity(`${topIntent} was top intent.`);
                             await dc.begin('default', topIntent);
                             break;
                         }
@@ -122,11 +110,7 @@ server.post('/api/messages', (req, res) => {
                     // there was some error
                     console.log(err);
                 }
-                );
-                
-    
-            
-
+                );                                
             }
         }
     });
@@ -141,7 +125,7 @@ dialogs.add('default', [
 
         if (debug) {
             await dc.context.sendActivity(`Intent = ${args}, you said "${dc.context.activity.text}"`);
-            var msg = `You have this saved reservation: 
+            var msg = `This was the last reservation you made: 
             <br/>Location: ${state.cafeLocation}
             <br/>Date/Time: ${state.dateTime} 
             <br/>Party size: ${state.partySize} 
@@ -159,63 +143,10 @@ dialogs.add('reserveTable', [
     async function(dc, args, next){
         var typedresult = args as CafeLUISModel;
 
-        // To avoid circular JSON error, don't do: 
-        //     dc.activeDialog.state = conversationState.get(dc.context);
-        // Get a state object to save entity info to conversation state
-        var state = conversationState.get(dc.context);
+        // Call a helper function to save the entities in the LUIS result
+        // to dialog state
+        await SaveEntities(dc, typedresult);
 
-        // Or save entities to dialog state:
-        // dc.activeDialog.state
-
-        // Resolve entities returned from LUIS, and save these to state
-        if (typedresult.entities)
-        {
-            console.log(`typedresult.entities exists.`);
-                let datetime = typedresult.entities.datetime;
-                //console.log(datetime.toString());
-                if (datetime) {
-                    console.log(`datetime entity defined of type ${datetime[0].type}.`);
-                    datetime[0].timex.forEach( (value, index) => {
-                        console.log(`Timex[${index}]=${value}`);
-                    })
-                    // Use the first date or time found in the utterance
-                    var dtvalue;
-                    if (datetime[0].timex) {
-                        dtvalue = datetime[0].timex[0];
-                        // More information on timex can be found here: http://www.timeml.org/publications/timeMLdocs/timeml_1.2.1.html#timex3                                
-                        // More information on the library which does the recognition can be found here: https://github.com/Microsoft/Recognizers-Text                        
-                    }                                                
-
-                    if (datetime[0].type === "datetime" ) {
-                        dc.activeDialog.state.dateTime = dtvalue;
-                        if (debug) {
-                            var datefound = new Date(dtvalue);
-                            console.log(`Type: ${datetime[0].type}, Date: ${datefound.toDateString()}, Time: ${datefound.toTimeString()}, DateTime: ${datefound.toLocaleString()}`);
-                            console.log(`(locale-specific) Date: ${datefound.toLocaleDateString()}, Time: ${datefound.toLocaleTimeString()}`);
-                            dc.activeDialog.state.date = datefound.toLocaleDateString();
-                            dc.activeDialog.state.time = datefound.toLocaleTimeString();
-                            dc.activeDialog.state.dateTime = datefound.toLocaleString();
-                        }                        
-                    } 
-                    else  {
-                        // TODO: also handle existence of state.date and state.time
-                        console.log(`Type ${datetime[0].type} is not yet supported`);
-                    }
-                }
-                let partysize = typedresult.entities.partySize;
-                    if (partysize) {
-                        console.log(`partysize entity defined.${partysize}`);
-                        // use first partySize entity that was found in utterance
-                        dc.activeDialog.state.partySize = partysize[0];
-                    }
-                    let cafelocation = typedresult.entities.cafeLocation;
-
-                    if (cafelocation) {
-                        console.log(`location entity defined.${cafelocation}`);
-                        // use first cafeLocation entity that was found in utterance
-                        dc.activeDialog.state.cafeLocation = cafelocation[0][0];
-                    }
-        } // end if (typedresult.entities)
         await dc.context.sendActivity("Welcome to the reservation service.");
         
         if (dc.activeDialog.state.dateTime) {
@@ -226,13 +157,9 @@ dialogs.add('reserveTable', [
         }
     },
     async function(dc, result, next){
-        //const state = conversationState.get(dc.context);
-
         if (!dc.activeDialog.state.dateTime) {
             // Save the dateTimePrompt result to dialog state
             dc.activeDialog.state.dateTime = result[0].value;
-            // optional
-            // state.dateTime = result[0].value;
         }
 
         // If we don't have party size, ask for it next
@@ -243,33 +170,20 @@ dialogs.add('reserveTable', [
         }
     },
     async function(dc, result, next){
-        // const state = conversationState.get(dc.context);
         if (!dc.activeDialog.state.partySize) {
             dc.activeDialog.state.partySize = result;
-            // optional
-            // state.partySize = result;
         }
-        // Ask for next info
+        // Ask for the reservation name next
         await dc.prompt('textPrompt', "Whose name will this be under?");
     },
     async function(dc, result){
-        //const state = conversationState.get(dc.context);
         dc.activeDialog.state.Name = result;
 
         // Save data to conversation state
-        var state = conversationState.get(dc.context);// conversationState.get(dc.context);
+        var state = conversationState.get(dc.context);
 
-        //optional if we copy this anyway
-        //state.Name = dc.activeDialog.state.Name;
-
-        // What if comment this out so we don't overwrite global state?
+        // Copy the dialog state to the conversation state
         state = dc.activeDialog.state;
-
-        // Confirm reservation
-        // var msg = `Reservation confirmed. Reservation details: 
-        //     <br/>Date/Time: ${dc.activeDialog.state.dateTime} 
-        //     <br/>Party size: ${dc.activeDialog.state.partySize} 
-        //     <br/>Reservation name: ${dc.activeDialog.state.Name}`;
 
         // TODO: Add in <br/>Location: ${state.cafeLocation}
         var msg = `Reservation confirmed. Reservation details:             
@@ -281,3 +195,59 @@ dialogs.add('reserveTable', [
         await dc.end();
     }
 ]);
+
+// Helper function that saves any entities found in the LUIS result
+// to the dialog state
+async function SaveEntities( dc, typedresult) {
+            // Resolve entities returned from LUIS, and save these to state
+            if (typedresult.entities)
+            {
+                console.log(`typedresult.entities exists.`);
+                    let datetime = typedresult.entities.datetime;
+                    //console.log(datetime.toString());
+                    if (datetime) {
+                        console.log(`datetime entity defined of type ${datetime[0].type}.`);
+                        datetime[0].timex.forEach( (value, index) => {
+                            console.log(`Timex[${index}]=${value}`);
+                        })
+                        // Use the first date or time found in the utterance
+                        var dtvalue;
+                        if (datetime[0].timex) {
+                            dtvalue = datetime[0].timex[0];
+                            // More information on timex can be found here: 
+                            // http://www.timeml.org/publications/timeMLdocs/timeml_1.2.1.html#timex3                                
+                            // More information on the library which does the recognition can be found here: 
+                            // https://github.com/Microsoft/Recognizers-Text                        
+                        }                                                
+    
+                        if (datetime[0].type === "datetime" ) {
+                            dc.activeDialog.state.dateTime = dtvalue;
+                            if (debug) {
+                                var datefound = new Date(dtvalue);
+                                console.log(`Type: ${datetime[0].type}, Date: ${datefound.toDateString()}, Time: ${datefound.toTimeString()}, DateTime: ${datefound.toLocaleString()}`);
+                                console.log(`(locale-specific) Date: ${datefound.toLocaleDateString()}, Time: ${datefound.toLocaleTimeString()}`);
+                                dc.activeDialog.state.date = datefound.toLocaleDateString();
+                                dc.activeDialog.state.time = datefound.toLocaleTimeString();
+                                dc.activeDialog.state.dateTime = datefound.toLocaleString();
+                            }                        
+                        } 
+                        else  {
+                            // TODO: also handle existence of state.date and state.time
+                            console.log(`Type ${datetime[0].type} is not yet supported`);
+                        }
+                    }
+                    let partysize = typedresult.entities.partySize;
+                        if (partysize) {
+                            console.log(`partysize entity defined.${partysize}`);
+                            // use first partySize entity that was found in utterance
+                            dc.activeDialog.state.partySize = partysize[0];
+                        }
+                        let cafelocation = typedresult.entities.cafeLocation;
+    
+                        if (cafelocation) {
+                            console.log(`location entity defined.${cafelocation}`);
+                            // use first cafeLocation entity that was found in utterance
+                            dc.activeDialog.state.cafeLocation = cafelocation[0][0];
+                        }
+            } 
+}
