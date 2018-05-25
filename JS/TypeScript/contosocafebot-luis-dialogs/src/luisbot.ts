@@ -126,7 +126,6 @@ dialogs.add('default', [
         if (debug) {
             await dc.context.sendActivity(`Intent = ${args}, you said "${dc.context.activity.text}"`);
             var msg = `This was the last reservation you made: 
-            <br/>Location: ${state.cafeLocation}
             <br/>Date/Time: ${state.dateTime} 
             <br/>Party size: ${state.partySize} 
             <br/>Reservation name: ${state.Name}`;
