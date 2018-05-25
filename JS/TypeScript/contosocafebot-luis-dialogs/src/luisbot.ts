@@ -3,16 +3,13 @@ import { DialogSet, TextPrompt, DatetimePrompt, DialogContext } from 'botbuilder
 import { LuisRecognizer, InstanceData, IntentData, DateTimeSpec } from 'botbuilder-ai';
 import { CafeLUISModel, _Intents, _Entities, _Instance } from './CafeLUISModel';
 import * as restify from 'restify';
-import { homedir } from 'os';
-import { INSPECT_MAX_BYTES } from 'buffer';
+
 
 import * as Recognizers from '@microsoft/recognizers-text-date-time';
 
-const debug = true;
-
-// cafebot 
-const appId = "edaadd9b-b632-4733-a25c-5b67271035dd";
-const subscriptionKey = "be30825b782843dcbbe520ac5338f567";
+// This App ID is for the cafebot public LUIS app
+const appId = "edaadd9b-b632-4733-a25c-5b67271035dd"
+const subscriptionKey = "be30825b782843dcbbe520ac5338f567"
 
 // Default is westus
 const serviceEndpoint = 'https://westus.api.cognitive.microsoft.com';
@@ -121,16 +118,7 @@ server.post('/api/messages', (req, res) => {
 dialogs.add('default', [
     async function (dc, args) {
         const state = conversationState.get(dc.context);
-        await dc.context.sendActivity(`Hi! I'm the reservation bot. Say something like make a reservation."`);
-
-        if (debug) {
-            await dc.context.sendActivity(`Intent = ${args}, you said "${dc.context.activity.text}"`);
-            var msg = `This was the last reservation you made: 
-            <br/>Date/Time: ${state.dateTime} 
-            <br/>Party size: ${state.partySize} 
-            <br/>Reservation name: ${state.Name}`;
-            await dc.context.sendActivity(msg);
-        }
+        await dc.context.sendActivity(`Hi! I'm the Contoso Cafe reservation bot. Say something like make a reservation."`);
         await dc.end();
     }
 ]);
@@ -225,10 +213,6 @@ async function SaveEntities( dc: DialogContext<TurnContext>, typedresult) {
                 var dtValue;
                 var dtResult;
                 if (values) {
-                    // print Recognizers-Text result
-                    values.forEach(( value, index) => {
-                        console.log(`Value[${index}]=${value.value}, timex=${value.timex}, type=${value.type}`);
-                    });
                     dtResult = values[0]
                     dtValue = values[0].value;
                 }
@@ -240,16 +224,11 @@ async function SaveEntities( dc: DialogContext<TurnContext>, typedresult) {
                         // use original timex format if recognizers couldn't parse a datetime
                         dc.activeDialog.state.dateTime = timexValue;
                     }
-
-                    if (debug) {
-                        var datefound = new Date(timexValue);
-                        console.log(`Type: ${datetime[0].type}, Date: ${datefound.toDateString()}, Time: ${datefound.toTimeString()}, DateTime: ${datefound.toLocaleString()}`);
-                        console.log(`(locale-specific) Date: ${datefound.toLocaleDateString()}, Time: ${datefound.toLocaleTimeString()}`);
-                    }                        
+                      
                 } 
                 else  {
                     // TODO: also handle existence of state.date and state.time
-                    console.log(`Type ${datetime[0].type} is not yet supported`);
+                    console.log(`Type ${datetime[0].type} is not yet supported. Provide both the date and the time.`);
                 }
             }                                                
 

@@ -13,8 +13,7 @@ const botbuilder_dialogs_1 = require("botbuilder-dialogs");
 const botbuilder_ai_1 = require("botbuilder-ai");
 const restify = require("restify");
 const Recognizers = require("@microsoft/recognizers-text-date-time");
-const debug = true;
-// cafebot 
+// This App ID is for the cafebot public LUIS app
 const appId = "edaadd9b-b632-4733-a25c-5b67271035dd";
 const subscriptionKey = "be30825b782843dcbbe520ac5338f567";
 // Default is westus
@@ -99,16 +98,7 @@ dialogs.add('default', [
     function (dc, args) {
         return __awaiter(this, void 0, void 0, function* () {
             const state = conversationState.get(dc.context);
-            yield dc.context.sendActivity(`Hi! I'm the reservation bot. Say something like make a reservation."`);
-            if (debug) {
-                yield dc.context.sendActivity(`Intent = ${args}, you said "${dc.context.activity.text}"`);
-                var msg = `This was the last reservation you made: 
-
-            <br/>Date/Time: ${state.dateTime} 
-            <br/>Party size: ${state.partySize} 
-            <br/>Reservation name: ${state.Name}`;
-                yield dc.context.sendActivity(msg);
-            }
+            yield dc.context.sendActivity(`Hi! I'm the Contoso Cafe reservation bot. Say something like make a reservation."`);
             yield dc.end();
         });
     }
@@ -200,10 +190,6 @@ function SaveEntities(dc, typedresult) {
                     var dtValue;
                     var dtResult;
                     if (values) {
-                        // print Recognizers-Text result
-                        values.forEach((value, index) => {
-                            console.log(`Value[${index}]=${value.value}, timex=${value.timex}, type=${value.type}`);
-                        });
                         dtResult = values[0];
                         dtValue = values[0].value;
                     }
@@ -215,15 +201,10 @@ function SaveEntities(dc, typedresult) {
                             // use original timex format if recognizers couldn't parse a datetime
                             dc.activeDialog.state.dateTime = timexValue;
                         }
-                        if (debug) {
-                            var datefound = new Date(timexValue);
-                            console.log(`Type: ${datetime[0].type}, Date: ${datefound.toDateString()}, Time: ${datefound.toTimeString()}, DateTime: ${datefound.toLocaleString()}`);
-                            console.log(`(locale-specific) Date: ${datefound.toLocaleDateString()}, Time: ${datefound.toLocaleTimeString()}`);
-                        }
                     }
                     else {
                         // TODO: also handle existence of state.date and state.time
-                        console.log(`Type ${datetime[0].type} is not yet supported`);
+                        console.log(`Type ${datetime[0].type} is not yet supported. Provide both the date and the time.`);
                     }
                 }
             }
