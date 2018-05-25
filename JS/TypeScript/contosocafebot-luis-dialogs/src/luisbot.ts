@@ -1,12 +1,14 @@
 import { BotFrameworkAdapter, MemoryStorage, ConversationState, TurnContext, RecognizerResult } from 'botbuilder';
-import { DialogSet, TextPrompt, DatetimePrompt } from 'botbuilder-dialogs';
+import { DialogSet, TextPrompt, DatetimePrompt, DialogContext } from 'botbuilder-dialogs';
 import { LuisRecognizer, InstanceData, IntentData, DateTimeSpec } from 'botbuilder-ai';
 import { CafeLUISModel, _Intents, _Entities, _Instance } from './CafeLUISModel';
 import * as restify from 'restify';
 import { homedir } from 'os';
 import { INSPECT_MAX_BYTES } from 'buffer';
 
-const debug = false;
+import * as Recognizers from '@microsoft/recognizers-text-date-time';
+
+const debug = true;
 
 // cafebot 
 const appId = "edaadd9b-b632-4733-a25c-5b67271035dd";
@@ -47,8 +49,6 @@ interface CafeBotConvState {
     dialogStack: any[];
     cafeLocation: string;
     dateTime: string;
-    date: string;
-    time: string;
     partySize: string;     
     Name: string;  
 }
@@ -198,56 +198,76 @@ dialogs.add('reserveTable', [
 
 // Helper function that saves any entities found in the LUIS result
 // to the dialog state
-async function SaveEntities( dc, typedresult) {
-            // Resolve entities returned from LUIS, and save these to state
-            if (typedresult.entities)
-            {
-                console.log(`typedresult.entities exists.`);
-                    let datetime = typedresult.entities.datetime;
-                    //console.log(datetime.toString());
-                    if (datetime) {
-                        console.log(`datetime entity defined of type ${datetime[0].type}.`);
-                        datetime[0].timex.forEach( (value, index) => {
-                            console.log(`Timex[${index}]=${value}`);
-                        })
-                        // Use the first date or time found in the utterance
-                        var dtvalue;
-                        if (datetime[0].timex) {
-                            dtvalue = datetime[0].timex[0];
-                            // More information on timex can be found here: 
-                            // http://www.timeml.org/publications/timeMLdocs/timeml_1.2.1.html#timex3                                
-                            // More information on the library which does the recognition can be found here: 
-                            // https://github.com/Microsoft/Recognizers-Text                        
-                        }                                                
-    
-                        if (datetime[0].type === "datetime" ) {
-                            dc.activeDialog.state.dateTime = dtvalue;
-                            if (debug) {
-                                var datefound = new Date(dtvalue);
-                                console.log(`Type: ${datetime[0].type}, Date: ${datefound.toDateString()}, Time: ${datefound.toTimeString()}, DateTime: ${datefound.toLocaleString()}`);
-                                console.log(`(locale-specific) Date: ${datefound.toLocaleDateString()}, Time: ${datefound.toLocaleTimeString()}`);
-                                dc.activeDialog.state.date = datefound.toLocaleDateString();
-                                dc.activeDialog.state.time = datefound.toLocaleTimeString();
-                                dc.activeDialog.state.dateTime = datefound.toLocaleString();
-                            }                        
-                        } 
-                        else  {
-                            // TODO: also handle existence of state.date and state.time
-                            console.log(`Type ${datetime[0].type} is not yet supported`);
-                        }
+async function SaveEntities( dc: DialogContext<TurnContext>, typedresult) {
+    // Resolve entities returned from LUIS, and save these to state
+    if (typedresult.entities)
+    {
+        console.log(`typedresult.entities exists.`);
+        let datetime = typedresult.entities.datetime;
+        //console.log(datetime.toString());
+        if (datetime) {
+            console.log(`datetime entity defined of type ${datetime[0].type}.`);
+            datetime[0].timex.forEach( (value, index) => {
+                console.log(`Timex[${index}]=${value}`);
+            })
+            // Use the first date or time found in the utterance
+            var timexValue;
+            if (datetime[0].timex) {
+                timexValue = datetime[0].timex[0];
+                // More information on timex can be found here: 
+                // http://www.timeml.org/publications/timeMLdocs/timeml_1.2.1.html#timex3                                
+                // More information on the library which does the recognition can be found here: 
+                // https://github.com/Microsoft/Recognizers-Text
+
+                // try to see if recognizers library can parse a timex
+                const results = Recognizers.recognizeDateTime(timexValue, dc.context.activity.locale);
+                const values = 
+                    results.length > 0 && results[0].resolution ? results[0].resolution.values : undefined;
+                var dtValue;
+                var dtResult;
+                if (values) {
+                    // print Recognizers-Text result
+                    values.forEach(( value, index) => {
+                        console.log(`Value[${index}]=${value.value}, timex=${value.timex}, type=${value.type}`);
+                    });
+                    dtResult = values[0]
+                    dtValue = values[0].value;
+                }
+
+                if (datetime[0].type === "datetime") {
+                    if (dtValue && dtResult.type === "datetime") {
+                        dc.activeDialog.state.dateTime = dtValue;
+                    } else {
+                        // use original timex format if recognizers couldn't parse a datetime
+                        dc.activeDialog.state.dateTime = timexValue;
                     }
-                    let partysize = typedresult.entities.partySize;
-                        if (partysize) {
-                            console.log(`partysize entity defined.${partysize}`);
-                            // use first partySize entity that was found in utterance
-                            dc.activeDialog.state.partySize = partysize[0];
-                        }
-                        let cafelocation = typedresult.entities.cafeLocation;
-    
-                        if (cafelocation) {
-                            console.log(`location entity defined.${cafelocation}`);
-                            // use first cafeLocation entity that was found in utterance
-                            dc.activeDialog.state.cafeLocation = cafelocation[0][0];
-                        }
-            } 
+
+                    if (debug) {
+                        var datefound = new Date(timexValue);
+                        console.log(`Type: ${datetime[0].type}, Date: ${datefound.toDateString()}, Time: ${datefound.toTimeString()}, DateTime: ${datefound.toLocaleString()}`);
+                        console.log(`(locale-specific) Date: ${datefound.toLocaleDateString()}, Time: ${datefound.toLocaleTimeString()}`);
+                    }                        
+                } 
+                else  {
+                    // TODO: also handle existence of state.date and state.time
+                    console.log(`Type ${datetime[0].type} is not yet supported`);
+                }
+            }                                                
+
+
+        }
+        let partysize = typedresult.entities.partySize;
+        if (partysize) {
+            console.log(`partysize entity defined.${partysize}`);
+            // use first partySize entity that was found in utterance
+            dc.activeDialog.state.partySize = partysize[0];
+        }
+        let cafelocation = typedresult.entities.cafeLocation;
+
+        if (cafelocation) {
+            console.log(`location entity defined.${cafelocation}`);
+            // use first cafeLocation entity that was found in utterance
+            dc.activeDialog.state.cafeLocation = cafelocation[0][0];
+        }
+    } 
 }
