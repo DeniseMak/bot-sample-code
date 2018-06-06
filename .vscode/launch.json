@@ -8,15 +8,15 @@
             "type": "node",
             "request": "launch",
             "name": "Launch Program",
-            "program": "${file}",
-            "outFiles": [
-                "${workspaceFolder}/**/*.js"
-            ],
+            "program": "${workspaceFolder}/JS\\TypeScript\\contosocafebot-luis-dialogs\\src\\luisbot.ts",
             "envFile": "C:/gh/bot-sample-code/JS/TypeScript/contosocafebot-luis-dialogs/src/.env",
             "env":{
                 "luisAppId": "edaadd9b-b632-4733-a25c-5b67271035dd",
                 "luisSubscriptionKey": "be30825b782843dcbbe520ac5338f567"
-            }
+            },
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ]
         }
     ]
 }

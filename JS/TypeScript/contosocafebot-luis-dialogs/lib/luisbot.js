@@ -12,9 +12,13 @@ const botbuilder_1 = require("botbuilder");
 const botbuilder_dialogs_1 = require("botbuilder-dialogs");
 const botbuilder_ai_1 = require("botbuilder-ai");
 const restify = require("restify");
-const Recognizers = require("@microsoft/recognizers-text-date-time");
+const DEBUG = false;
+const Resolver = require('@microsoft/recognizers-text-data-types-timex-expression').default.resolver;
+const Creator = require('@microsoft/recognizers-text-data-types-timex-expression').default.creator;
+const TimexProperty = require('@microsoft/recognizers-text-data-types-timex-expression').default.TimexProperty;
 // This App ID is for the cafebot public LUIS app
-const appId = "edaadd9b-b632-4733-a25c-5b67271035dd";
+const appId = process.env.LUIS_APP_ID; //"edaadd9b-b632-4733-a25c-5b67271035dd";
+console.log(`process.env.LUIS_APP_ID=${process.env.LUIS_APP_ID}`);
 const subscriptionKey = "be30825b782843dcbbe520ac5338f567";
 // Default is westus
 const serviceEndpoint = 'https://westus.api.cognitive.microsoft.com';
@@ -74,6 +78,20 @@ server.post('/api/messages', (req, res) => {
                         }
                         case Intents.Greeting: {
                             yield context.sendActivity("Top intent is Greeting");
+                            if (DEBUG) {
+                                const today = new Date(2017, 8, 26, 15, 30, 0);
+                                var testTimex1 = TimexProperty.fromDateTime(today);
+                                var textTime = testTimex1.toString();
+                                yield context.sendActivity(`Top intent is Greeting and an arbitrary time is: ${textTime}`);
+                                var testTimexResolution = Resolver.evaluate(['1984-01-03T18:30:45'], [Creator.wednesday]); // 1984-01-03T18:30:45
+                                var testTimexResolution2 = Resolver.evaluate(['2018-06-05T15'], [Creator.today()]);
+                                var testTimexResolution3 = Resolver.evaluate(['2018-06-08T15'], []);
+                                var testTimexResolution4 = Resolver.evaluate(['2018-06-08T15'], [Creator.afternoon]);
+                                console.log(`resolutions:${testTimexResolution},${testTimexResolution2}, ${testTimexResolution3}, ${testTimexResolution4}`);
+                                if (testTimexResolution.values) {
+                                    console.log(`Found resolution values: length=${testTimexResolution.values.length}`);
+                                }
+                            }
                             break;
                         }
                         case Intents.Who_are_you_intent: {
@@ -185,22 +203,36 @@ function SaveEntities(dc, typedresult) {
                     // More information on the library which does the recognition can be found here: 
                     // https://github.com/Microsoft/Recognizers-Text
                     // try to see if recognizers library can parse a timex
+                    /*
                     const results = Recognizers.recognizeDateTime(timexValue, dc.context.activity.locale);
-                    const values = results.length > 0 && results[0].resolution ? results[0].resolution.values : undefined;
+                    const values =
+                        results.length > 0 && results[0].resolution ? results[0].resolution.values : undefined;
                     var dtValue;
                     var dtResult;
                     if (values) {
-                        dtResult = values[0];
+                        dtResult = values[0]
                         dtValue = values[0].value;
-                    }
+                    } */
                     if (datetime[0].type === "datetime") {
-                        if (dtValue && dtResult.type === "datetime") {
+                        var resolution = Resolver.evaluate([timexValue], // array of timex values to resolve
+                        []); // no constraints
+                        console.log(`resolution: ${resolution}, resolution.toNaturalLanguage(): ${resolution.toNaturalLanguage(new Date("June 5th 2018"))},resolution.toString(): ${resolution.toString()}.`);
+                        dc.activeDialog.state.dateTime = resolution.toString();
+                        /*if (dtValue && dtResult.type === "datetime") {
                             dc.activeDialog.state.dateTime = dtValue;
-                        }
-                        else {
+                        } else {
                             // use original timex format if recognizers couldn't parse a datetime
                             dc.activeDialog.state.dateTime = timexValue;
-                        }
+                        }*/
+                    }
+                    else if (datetime[0].type === "datetimerange") {
+                        // treat ranges as the reservation start and end?
+                        // treat tomorrow morning (2018-06-07TMO) works, prints out morning
+                        // (2018-06-07T09,2018-06-07T17,PT8H) doesn't resolve with no constraints - WHY?
+                        var resolution = Resolver.evaluate([timexValue], // array of timex values to resolve
+                        []); // no constraints
+                        console.log(`resolution: ${resolution}, resolution.toString(): ${resolution.toString()}.`);
+                        dc.activeDialog.state.dateTime = resolution.toString();
                     }
                     else {
                         // TODO: also handle existence of state.date and state.time
