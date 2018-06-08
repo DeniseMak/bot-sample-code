@@ -25,7 +25,12 @@ const serviceEndpoint = 'https://westus.api.cognitive.microsoft.com';
 const luisRec = new botbuilder_ai_1.LuisRecognizer({
     appId: appId,
     subscriptionKey: subscriptionKey,
-    serviceEndpoint: serviceEndpoint
+    serviceEndpoint: serviceEndpoint,
+    options: {
+        // the offset from UTC in minutes
+        timezoneOffset: -480,
+        verbose: true
+    }
 });
 // Enum for convenience
 // intent names match CafeLUISModel.ts
@@ -122,7 +127,30 @@ dialogs.add('default', [
     }
 ]);
 dialogs.add('textPrompt', new botbuilder_dialogs_1.TextPrompt());
-dialogs.add('dateTimePrompt', new botbuilder_dialogs_1.DatetimePrompt());
+//dialogs.add('dateTimePrompt', new DatetimePrompt());
+dialogs.add('dateTimePrompt', new botbuilder_dialogs_1.DatetimePrompt((context, values) => __awaiter(this, void 0, void 0, function* () {
+    try {
+        if (values.length <= 0) {
+            console.log(`Length of values array in prompt validator was 0`);
+            throw new Error('Length of values array in prompt validator <= 0');
+        }
+        if (values[0].type !== 'datetime') {
+            console.log(`unsupported type ${values[0].type}. expected: datetime.`);
+            throw new Error(`unsupported type ${values[0].type}. expected: datetime.`);
+        }
+        const value = new Date(values[0].value);
+        if (value.getTime() < new Date().getTime()) {
+            console.log(`DateTime Validator: time is in the past.`);
+            throw new Error('in the past');
+        }
+        //return value; would return the actual date rather than array of resolutions
+        return values;
+    }
+    catch (err) {
+        yield context.sendActivity(`Please enter a valid time in the future like "tomorrow at 9am".`);
+        return undefined;
+    }
+})));
 dialogs.add('reserveTable', [
     function (dc, args, next) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -190,14 +218,18 @@ function SaveEntities(dc, typedresult) {
             let datetime = typedresult.entities.datetime;
             //console.log(datetime.toString());
             if (datetime) {
-                console.log(`datetime entity defined of type ${datetime[0].type}.`);
+                // datetime[0] is the first date or time found in the utterance
+                console.log(`datetime entity defined of type ${datetime[0].type}, with ${datetime[0].timex.length} values.`);
                 datetime[0].timex.forEach((value, index) => {
                     console.log(`Timex[${index}]=${value}`);
                 });
-                // Use the first date or time found in the utterance
+                // the first date or time resolution of datetime[0]
                 var timexValue;
+                // the array of all resolutions of datetime[0]
+                var timexValues;
                 if (datetime[0].timex) {
                     timexValue = datetime[0].timex[0];
+                    timexValues = datetime[0].timex;
                     // More information on timex can be found here: 
                     // http://www.timeml.org/publications/timeMLdocs/timeml_1.2.1.html#timex3                                
                     // More information on the library which does the recognition can be found here: 
@@ -214,10 +246,18 @@ function SaveEntities(dc, typedresult) {
                         dtValue = values[0].value;
                     } */
                     if (datetime[0].type === "datetime") {
-                        var resolution = Resolver.evaluate([timexValue], // array of timex values to resolve
-                        []); // no constraints
-                        console.log(`resolution: ${resolution}, resolution.toNaturalLanguage(): ${resolution.toNaturalLanguage(new Date("June 5th 2018"))},resolution.toString(): ${resolution.toString()}.`);
-                        dc.activeDialog.state.dateTime = resolution.toString();
+                        var resolution = Resolver.evaluate(timexValues, 
+                        //[timexValue], // array of timex values to resolve
+                        [Creator.evening]);
+                        //[]); // no constraints
+                        // TODO: More than one resolution, i.e. ambiguous "today at 6" can be AM or PM.
+                        if (resolution) {
+                            console.log(`resolution: ${resolution}, resolution.length = ${resolution.length},resolution[0].toNaturalLanguage(): ${resolution[0].toNaturalLanguage(new Date())},resolution.toString(): ${resolution.toString()}.`);
+                            dc.activeDialog.state.dateTime = resolution[0].toNaturalLanguage(new Date()); //resolution.toString();
+                        }
+                        else {
+                            dc.activeDialog.state.dateTime = timexValue;
+                        }
                         /*if (dtValue && dtResult.type === "datetime") {
                             dc.activeDialog.state.dateTime = dtValue;
                         } else {
