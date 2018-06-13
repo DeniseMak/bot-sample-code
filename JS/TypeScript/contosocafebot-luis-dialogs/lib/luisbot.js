@@ -12,6 +12,10 @@ const botbuilder_1 = require("botbuilder");
 const botbuilder_dialogs_1 = require("botbuilder-dialogs");
 const botbuilder_ai_1 = require("botbuilder-ai");
 const restify = require("restify");
+/*
+import * as Recognizers from '@microsoft/recognizers-text-date-time';
+import * as DatatypesDateTime from '@microsoft/recognizers-text-data-types-timex-expression'
+*/
 const DEBUG = false;
 const Resolver = require('@microsoft/recognizers-text-data-types-timex-expression').default.resolver;
 const Creator = require('@microsoft/recognizers-text-data-types-timex-expression').default.creator;
@@ -19,7 +23,8 @@ const TimexProperty = require('@microsoft/recognizers-text-data-types-timex-expr
 // This App ID is for the cafebot public LUIS app
 const appId = process.env.LUIS_APP_ID; //"edaadd9b-b632-4733-a25c-5b67271035dd";
 console.log(`process.env.LUIS_APP_ID=${process.env.LUIS_APP_ID}`);
-const subscriptionKey = "be30825b782843dcbbe520ac5338f567";
+const subscriptionKey = process.env.LUIS_SUBSCRIPTION_KEY; //"be30825b782843dcbbe520ac5338f567";
+console.log(`process.env.LUIS_SUBSCRIPTION_KEY=${process.env.LUIS_SUBSCRIPTION_KEY}`);
 // Default is westus
 const serviceEndpoint = 'https://westus.api.cognitive.microsoft.com';
 const luisRec = new botbuilder_ai_1.LuisRecognizer({
@@ -27,7 +32,7 @@ const luisRec = new botbuilder_ai_1.LuisRecognizer({
     subscriptionKey: subscriptionKey,
     serviceEndpoint: serviceEndpoint,
     options: {
-        // the offset from UTC in minutes
+        // Edit this to be the bot's time offset from UTC in minutes
         timezoneOffset: -480,
         verbose: true
     }
@@ -138,6 +143,7 @@ dialogs.add('dateTimePrompt', new botbuilder_dialogs_1.DatetimePrompt((context, 
             console.log(`unsupported type ${values[0].type}. expected: datetime.`);
             throw new Error(`unsupported type ${values[0].type}. expected: datetime.`);
         }
+        /***** TODO: Pass values to timex resolver and return the candidates that remain after constraints **** */
         const value = new Date(values[0].value);
         if (value.getTime() < new Date().getTime()) {
             console.log(`DateTime Validator: time is in the past.`);
@@ -246,17 +252,22 @@ function SaveEntities(dc, typedresult) {
                         dtValue = values[0].value;
                     } */
                     if (datetime[0].type === "datetime") {
-                        var resolution = Resolver.evaluate(timexValues, 
-                        //[timexValue], // array of timex values to resolve
+                        var resolution = Resolver.evaluate(
+                        // array of timex values to resolve. There may be more than one resolution, i.e. ambiguous "today at 6" can be AM or PM.
+                        timexValues, 
+                        /***** TODO: add more constraints **/
+                        // Creator.evening constrains this to times between 4pm and 8pm
                         [Creator.evening]);
                         //[]); // no constraints
-                        // TODO: More than one resolution, i.e. ambiguous "today at 6" can be AM or PM.
-                        if (resolution) {
+                        // TODO: what if there's still more than one resolution after constraint resolution
+                        /***** TODO: toNaturalLanguage throws if resolution[0] undef */
+                        if (resolution[0]) {
                             console.log(`resolution: ${resolution}, resolution.length = ${resolution.length},resolution[0].toNaturalLanguage(): ${resolution[0].toNaturalLanguage(new Date())},resolution.toString(): ${resolution.toString()}.`);
                             dc.activeDialog.state.dateTime = resolution[0].toNaturalLanguage(new Date()); //resolution.toString();
                         }
                         else {
-                            dc.activeDialog.state.dateTime = timexValue;
+                            // time didn't satisfy constraint.
+                            dc.activeDialog.state.dateTime = null; //timexValue;
                         }
                         /*if (dtValue && dtResult.type === "datetime") {
                             dc.activeDialog.state.dateTime = dtValue;
