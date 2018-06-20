@@ -57,6 +57,7 @@ const adapter = new botbuilder_1.BotFrameworkAdapter({
     appId: process.env.MICROSOFT_APP_ID,
     appPassword: process.env.MICROSOFT_APP_PASSWORD
 });
+console.log(`MSBotID=${process.env.MICROSOFT_APP_ID}, BotPassword=${process.env.MICROSOFT_APP_PASSWORD}`);
 const conversationState = new botbuilder_1.ConversationState(new botbuilder_1.MemoryStorage());
 adapter.use(conversationState);
 // Create empty dialog set
@@ -87,7 +88,10 @@ server.post('/api/messages', (req, res) => {
                             break;
                         }
                         case Intents.Greeting: {
-                            yield context.sendActivity("Top intent is Greeting");
+                            //await context.sendActivity("Top intent is Greeting");
+                            const basicMessage = botbuilder_1.MessageFactory.text('This is the text that will be displayed.', 'This is the text that will be spoken.');
+                            yield context.sendActivity(basicMessage);
+                            yield context.sendActivity({ speak: "hi" });
                             if (DEBUG) {
                                 const today = new Date(2017, 8, 26, 15, 30, 0);
                                 var testTimex1 = TimexProperty.fromDateTime(today);

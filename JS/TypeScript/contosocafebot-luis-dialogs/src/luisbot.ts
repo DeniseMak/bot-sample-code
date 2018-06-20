@@ -1,8 +1,9 @@
-import { BotFrameworkAdapter, MemoryStorage, ConversationState, TurnContext, RecognizerResult } from 'botbuilder';
+import { BotFrameworkAdapter, MemoryStorage, ConversationState, TurnContext, RecognizerResult, InputHints, MessageFactory } from 'botbuilder';
 import { DialogSet, TextPrompt, DatetimePrompt, DialogContext } from 'botbuilder-dialogs';
 import { LuisRecognizer, InstanceData, IntentData, DateTimeSpec } from 'botbuilder-ai';
 import { CafeLUISModel, _Intents, _Entities, _Instance } from './CafeLUISModel';
 import * as restify from 'restify';
+import { Activity } from 'botframework-connector/lib/generated/models/mappers';
 
 /*
 import * as Recognizers from '@microsoft/recognizers-text-date-time';
@@ -54,6 +55,8 @@ const adapter = new BotFrameworkAdapter( {
     appPassword: process.env.MICROSOFT_APP_PASSWORD 
 });
 
+console.log(`MSBotID=${process.env.MICROSOFT_APP_ID}, BotPassword=${process.env.MICROSOFT_APP_PASSWORD}`);
+
 // Add conversation state middleware
 interface CafeBotConvState {
     dialogStack: any[];
@@ -102,8 +105,12 @@ server.post('/api/messages', (req, res) => {
                         }
                         
                         case Intents.Greeting: {
-                            await context.sendActivity("Top intent is Greeting");
 
+                            //await context.sendActivity("Top intent is Greeting");
+                            const basicMessage = MessageFactory.text(
+                                'This is the text that will be displayed.', 'This is the text that will be spoken.'); 
+                            await context.sendActivity(basicMessage); 
+                            await context.sendActivity({speak:"hi"});
                             if (DEBUG) {
                                 const today = new Date(2017, 8, 26, 15, 30, 0);
                                 var testTimex1 = TimexProperty.fromDateTime(today);

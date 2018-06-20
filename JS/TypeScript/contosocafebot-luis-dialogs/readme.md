@@ -1,6 +1,19 @@
 # contosocafebot-luis-dialogs
 
-This bot demonstrates uses LUIS to determine intent and extract entities for making a restaurant reservation.
+This bot demonstrates how to use LUIS to determine intent and extract entities for making a restaurant reservation.
+
+## Setting up the LUIS app using LUDown
+
+First create a .lu file. See https://github.com/Microsoft/botbuilder-tools/blob/master/Ludown/docs/lu-file-format.md for details.
+```
+# Greeting
+- Hi
+- Hello
+- Good morning
+- Good evening
+# Book Table
+- reserve table for 4 at 8pm 5/24/2018
+```
 
 > [!NOTE]
 > Unlike the **contosocafebot-luis-1** sample, this one passes the `RecognizerResult` returned from `LUISRecognizer` 
